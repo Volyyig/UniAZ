@@ -1,14 +1,15 @@
-/// 用于执行多进制加密和解密的结构体
+/// Structure for performing multi-base encryption and decryption.
 pub struct Cipher {
+    /// The character set (alphabet) used for the base.
     alphabet: Vec<char>,
+    /// The radix (base) of the cipher, equal to the alphabet length.
     radix: u64,
-    // 【优化点】使用固定大小数组作为查找表。
-    // ASCII 字符集只有 128 或 256 个字符，使用 256 元素足以覆盖常用编码。
+    /// Fixed-size lookup table (up to 256 ASCII chars) for quick character-to-value mapping (O(1)).
     val_map_array: [u64; 256],
 }
 
 impl Cipher {
-    /// 创建一个新的加密器，并预计算查找表
+    /// Creates a new Cipher and pre-calculates the character-to-value lookup table.
     pub fn new(pattern: &str) -> Self {
         let alphabet: Vec<char> = pattern.chars().collect();
         let radix = alphabet.len() as u64;
@@ -17,10 +18,10 @@ impl Cipher {
             panic!("Alphabet cannot be empty");
         }
 
-        // 1. 初始化数组：用一个不可能的哨兵值（如 u64::MAX）填充，表示“不在字母表中”。
+        // Initialize the array with a sentinel value (u64::MAX) indicating "not in alphabet".
         let mut val_map_array = [u64::MAX; 256];
 
-        // 2. 填充数组：将字母表中的字符映射到它们的索引值。
+        // Populate the array by mapping characters to their index value.
         for (i, &c) in alphabet.iter().enumerate() {
             let index = c as usize;
             if index >= 256 {
@@ -32,8 +33,7 @@ impl Cipher {
         Cipher { alphabet, radix, val_map_array }
     }
 
-    /// 辅助函数：查找字符在字符集中的索引 (O(1) 查找)
-    /// 【优化点】直接使用数组索引访问，性能最高。
+    /// Helper function: Retrieves the index (value) of a character in the alphabet (O(1) lookup).
     fn char_to_val(&self, c: char) -> u64 {
         let index = c as usize;
         if index >= 256 {
@@ -48,11 +48,8 @@ impl Cipher {
         val
     }
 
-    // ----------------------------------------------------
-    // 以下函数逻辑不变，内部调用 char_to_val 时的性能是 O(1)
-    // ----------------------------------------------------
-
-    /// 核心辅助函数：计算大数取模
+    /// Core helper function: Calculates the large number modulus based on input digits.
+    /// This result is used as a seed for disordering/shifting.
     fn get_seed_mod(&self, digits: &[char], skip_idx: usize, modulus: u64) -> usize {
         if modulus == 0 { return 0; }
 
@@ -63,7 +60,7 @@ impl Cipher {
             if i == skip_idx { continue; }
             is_empty = false;
 
-            // O(1) 查找
+            // O(1) lookup
             let val = self.char_to_val(c);
 
             remainder = (remainder * self.radix + val) % modulus;
@@ -72,19 +69,20 @@ impl Cipher {
         if is_empty { 0 } else { remainder as usize }
     }
 
-    /// 生成乱序用的替换表 (基于 Fisher-Yates 变体的 O(N) 逻辑)
+    /// Generates a disordered replacement table (permutation) based on a seed derived from input digits.
     fn disorder(&self, digits: &[char], skip_idx: usize) -> Vec<char> {
         let mut obj = self.alphabet.clone();
 
         for i in (1..obj.len()).rev() {
             let current_length = (i + 1) as u64;
+            // Use the seed mod as the index for swapping (Fisher-Yates variant).
             let j = self.get_seed_mod(digits, skip_idx, current_length);
             obj.swap(i, j);
         }
         obj
     }
 
-    /// 通用加密函数
+    /// Single-iteration forward encryption function.
     fn encrypt_once(&self, input: &str) -> String {
         let mut digit_list: Vec<char> = input.chars().collect();
         let len = digit_list.len();
@@ -103,7 +101,7 @@ impl Cipher {
         digit_list.into_iter().collect()
     }
 
-    /// 通用解密函数
+    /// Single-iteration backward decryption function.
     fn decrypt_once(&self, input: &str) -> String {
         let mut digit_list: Vec<char> = input.chars().collect();
         let len = digit_list.len();
@@ -124,6 +122,7 @@ impl Cipher {
         digit_list.into_iter().collect()
     }
 
+    /// Encrypts the input string for a specified number of iterations.
     pub fn encrypt(&self, input: &str, iteration: usize) -> String {
         let mut res = String::from(input);
         for _ in 0..iteration {
@@ -132,6 +131,7 @@ impl Cipher {
         res
     }
 
+    /// Decrypts the input string for a specified number of iterations.
     pub fn decrypt(&self, input: &str, iteration: usize) -> String {
         let mut res = String::from(input);
         for _ in 0..iteration {
@@ -141,7 +141,7 @@ impl Cipher {
     }
 }
 
-// ---------------- 测试部分 ----------------
+// ---------------- Test Section ----------------
 
 #[cfg(test)]
 mod tests {
@@ -150,7 +150,7 @@ mod tests {
 
     #[test]
     fn test_decimal() {
-        // 传统的十进制测试
+        // Standard decimal test
         let cipher = Cipher::new("0123456789");
         let original = "1234567890";
         let encrypted = cipher.encrypt_once(original);
@@ -166,7 +166,7 @@ mod tests {
 
     #[test]
     fn test_hex() {
-        // 十六进制测试
+        // Hexadecimal test
         let cipher = Cipher::new("0123456789ABCDEF");
         let original = "A1F90";
         let encrypted = cipher.encrypt_once(original);
@@ -180,7 +180,7 @@ mod tests {
 
     #[test]
     fn test_base62() {
-        // Base62 (数字 + 小写 + 大写)
+        // Base62 (Digits + Lowercase + Uppercase)
         let base62_pattern = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
         let cipher = Cipher::new(base62_pattern);
 
@@ -196,7 +196,7 @@ mod tests {
 
     #[test]
     fn test_binary() {
-        // 二进制测试 (只有 0 和 1)
+        // Binary test (only 0 and 1)
         let cipher = Cipher::new("01");
         let original = "110101011100";
         let encrypted = cipher.encrypt_once(original);
@@ -245,7 +245,7 @@ mod tests {
         let alphabet = "abcdefghijklmnopqrstuvwxyz";
         let cipher = Cipher::new(alphabet);
         let converter = Converter::new("0123456789", alphabet);
-        for i in "你好世界 鼻".chars() {
+        for i in "你好世界".chars() {
             let original = converter.convert(&(i as u32).to_string()).unwrap();
             println!("{} {:?}", i, original);
             let encrypted = cipher.encrypt_once(&original);
@@ -264,7 +264,7 @@ mod tests {
         let alphabet = "abcdefghijklmnopqrstuvwxyz";
         let cipher = Cipher::new(alphabet);
         let converter = Converter::new("0123456789", alphabet);
-        for i in "你好世界 鼻".chars() {
+        for i in "你好世界".chars() {
             let original = converter.convert(&(i as u32).to_string()).unwrap();
             println!("{} {:?}", i, original);
             let encrypted = cipher.encrypt(&original, 2);

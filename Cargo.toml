@@ -2,6 +2,15 @@
 name = "uniaz"
 version = "0.1.0"
 edition = "2024"
+authors = ["Entlst <volyyig@gmail.com>"]
+description = "A Unicode encryption library unify art"
+documentation = "https://docs.rs/uniaz"
+homepage = "https://github.com/Volyyig/uniaz"
+repository = "https://github.com/Volyyig/uniaz"
+readme = "README.md"
+keywords = ["encryption", "unicode", "cipher", "security"]
+categories = ["cryptography", "encoding"]
+license = "MIT OR Apache-2.0"
 
 [dependencies]
 anybase = "0.2.3"
