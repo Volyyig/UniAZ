@@ -21,9 +21,9 @@ Quick example
 use uniaz::UniAz;
 
 fn main() {
-    let uni = UniAz::new(); // default uses "abcdefghijklmnopqrstuvwxyz"
+    let uni = UniAz::new(); // "abcdefghijklmnopqrstuvwxyz"
 
-    let encrypted = uni.encrypt(&'你');        // -> String (obfuscated)
+    let encrypted = uni.encrypt(&'你');        // -> "abpx"
     let decrypted = uni.decrypt(&encrypted);  // -> '你'
 
     println!("encrypted={}", encrypted);
