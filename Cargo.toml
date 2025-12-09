@@ -1,0 +1,7 @@
+[package]
+name = "uniaz"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+anybase = "0.2.3"
