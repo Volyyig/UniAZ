@@ -1,14 +1,14 @@
 [package]
 name = "uniaz"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
 authors = ["Entlst <volyyig@gmail.com>"]
-description = "A Unicode encryption library unify art"
+description = "Unify the Unicode chars into A-Z sequence"
 documentation = "https://docs.rs/uniaz"
 homepage = "https://github.com/Volyyig/uniaz"
 repository = "https://github.com/Volyyig/uniaz"
 readme = "README.md"
-keywords = ["encryption", "unicode", "cipher", "security"]
+keywords = ["encryption", "unicode", "cipher", "obfuscation"]
 categories = ["cryptography", "encoding"]
 license = "MIT OR Apache-2.0"
 

@@ -110,7 +110,7 @@ impl UniAz {
     /// assert_eq!(decrypted, 'A');
     /// ```
     pub fn decrypt(&self, cipher: &str) -> char {
-        let decrypted = self.cipher.decrypt(&cipher, 2);
+        let decrypted = self.cipher.decrypt(cipher, 2);
         char::from_u32(u32::from_str(&self.rev_converter.convert(&decrypted).unwrap()).unwrap()).unwrap()
     }
 }
