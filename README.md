@@ -23,18 +23,25 @@ use uniaz::UniAz;
 fn main() {
     let uni = UniAz::new(); // "abcdefghijklmnopqrstuvwxyz"
 
-    let encrypted = uni.encrypt(&'你');        // -> "abpx"
-    let decrypted = uni.decrypt(&encrypted);  // -> '你'
+    let encrypted = uni.encrypt('你');         // -> "abpx"
+    let decrypted = uni.decrypt(&encrypted).unwrap();  // -> '你'
 
-    println!("encrypted={}", encrypted);
+    println!("encrypted={encrypted}");
     assert_eq!(decrypted, '你');
+
+    // Batch encrypt/decrypt strings (space-separated tokens)
+    let text = uni.encrypt_str("你好世界");
+    let recovered = uni.decrypt_str(&text).unwrap();
+    assert_eq!(recovered, "你好世界");
 }
 ```
 
 API (important)
-- `UniAz::new()` — create an instance.
-- `UniAz::encrypt(&char) -> String` — convert a char to an encrypted string.
-- `UniAz::decrypt(&str) -> char` — recover the original char from an encrypted string.
+- `UniAz::new()` / `UniAz::default()` — create an instance.
+- `UniAz::encrypt(char) -> String` — convert a char to an encrypted string.
+- `UniAz::decrypt(&str) -> Result<char, DecryptError>` — recover the original char (returns `Err` on invalid input).
+- `UniAz::encrypt_str(&str) -> String` — encrypt a string (space-separated output).
+- `UniAz::decrypt_str(&str) -> Result<String, DecryptError>` — decrypt a string.
 
 Docs & tests
 - Generate and open the API docs:

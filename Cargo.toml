@@ -1,7 +1,7 @@
 [package]
 name = "uniaz"
 version = "0.1.2"
-edition = "2024"
+edition = "2021"
 authors = ["Entlst <volyyig@gmail.com>"]
 description = "Unify the Unicode chars into A-Z sequence"
 documentation = "https://docs.rs/uniaz"
@@ -14,3 +14,10 @@ license = "MIT OR Apache-2.0"
 
 [dependencies]
 anybase = "0.2.3"
+
+[dev-dependencies]
+criterion = "0.5"
+
+[[bench]]
+name = "uniaz_bench"
+harness = false

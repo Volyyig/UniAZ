@@ -70,16 +70,22 @@ impl Cipher {
     }
 
     /// Generates a disordered replacement table (permutation) based on a seed derived from input digits.
-    fn disorder(&self, digits: &[char], skip_idx: usize) -> Vec<char> {
+    /// Returns the permutation and a char->index lookup table for O(1) position queries.
+    fn disorder(&self, digits: &[char], skip_idx: usize) -> (Vec<char>, [u8; 256]) {
         let mut obj = self.alphabet.clone();
 
         for i in (1..obj.len()).rev() {
             let current_length = (i + 1) as u64;
-            // Use the seed mod as the index for swapping (Fisher-Yates variant).
             let j = self.get_seed_mod(digits, skip_idx, current_length);
             obj.swap(i, j);
         }
-        obj
+
+        // Build O(1) char->index lookup for the permutation.
+        let mut pos_map = [255u8; 256];
+        for (idx, &c) in obj.iter().enumerate() {
+            pos_map[c as usize] = idx as u8;
+        }
+        (obj, pos_map)
     }
 
     /// Single-iteration forward encryption function.
@@ -89,12 +95,13 @@ impl Cipher {
 
         for i in 0..len {
             let current_char = digit_list[i];
-            let capacity = self.disorder(&digit_list, i);
+            let (capacity, pos_map) = self.disorder(&digit_list, i);
             let seed_mod_radix = self.get_seed_mod(&digit_list, i, self.radix);
-            let offset = seed_mod_radix + i.pow(2) + 1;
+            let offset = seed_mod_radix as u64 + (i * i) as u64 + 1;
 
-            if let Some(pos) = capacity.iter().position(|&x| x == current_char) {
-                let new_pos = (pos + offset) % capacity.len();
+            let pos = pos_map[current_char as usize];
+            if pos != 255 {
+                let new_pos = ((pos as u64 + offset) % self.radix) as usize;
                 digit_list[i] = capacity[new_pos];
             }
         }
@@ -108,14 +115,20 @@ impl Cipher {
 
         for i in (0..len).rev() {
             let current_char = digit_list[i];
-            let mut capacity = self.disorder(&digit_list, i);
+            let (mut capacity, mut pos_map) = self.disorder(&digit_list, i);
             capacity.reverse();
 
-            let seed_mod_radix = self.get_seed_mod(&digit_list, i, self.radix);
-            let offset = seed_mod_radix + i.pow(2) + 1;
+            // Rebuild pos_map for reversed permutation.
+            for (idx, &c) in capacity.iter().enumerate() {
+                pos_map[c as usize] = idx as u8;
+            }
 
-            if let Some(pos) = capacity.iter().position(|&x| x == current_char) {
-                let new_pos = (pos + offset) % capacity.len();
+            let seed_mod_radix = self.get_seed_mod(&digit_list, i, self.radix);
+            let offset = seed_mod_radix as u64 + (i * i) as u64 + 1;
+
+            let pos = pos_map[current_char as usize];
+            if pos != 255 {
+                let new_pos = ((pos as u64 + offset) % self.radix) as usize;
                 digit_list[i] = capacity[new_pos];
             }
         }

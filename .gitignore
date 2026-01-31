@@ -1,2 +1,30 @@
-/Cargo.lock
+# Rust 编译产物
 **/target/
+**/*.rs.bk
+*.pdb
+
+# Cargo.lock (库项目通常不提交，可执行项目则提交)
+# 如果这是库项目，保持忽略；如果是二进制项目，可以取消注释下一行
+/Cargo.lock
+
+# Criterion 基准测试结果
+# 这些是自动生成的报告和数据，通常不需要提交
+/target/criterion/
+
+# 编辑器和 IDE 配置
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# 操作系统生成的文件
+Thumbs.db
+Desktop.ini
+
+# 调试和性能分析文件
+perf.data
+perf.data.old
+flamegraph.svg
+*.profdata

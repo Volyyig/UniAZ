@@ -1,7 +1,6 @@
 //! UniAZ - A Unicode encryption library
 //!
-//! This crate provides functionality to unify the arbitrarily Unicode character into A-Z
-//! 
+//! This crate provides functionality to unify arbitrary Unicode characters into a-z.
 //!
 //! # Examples
 //!
@@ -9,8 +8,8 @@
 //! use uniaz::UniAz;
 //!
 //! let uni_az = UniAz::new();
-//! let encrypted = uni_az.encrypt(&'你');
-//! let decrypted = uni_az.decrypt(&encrypted);
+//! let encrypted = uni_az.encrypt('你');
+//! let decrypted = uni_az.decrypt(&encrypted).unwrap();
 //! assert_eq!(decrypted, '你');
 //! ```
 
@@ -51,11 +50,11 @@ impl UniAz {
         const ALPHABET: &str = "abcdefghijklmnopqrstuvwxyz";
         let converter = Converter::new("0123456789", ALPHABET);
         let rev_converter = converter.inverse();
-        
+
         UniAz {
             converter,
             rev_converter,
-            cipher: Cipher::new(ALPHABET)
+            cipher: Cipher::new(ALPHABET),
         }
     }
     
@@ -66,7 +65,7 @@ impl UniAz {
     ///
     /// # Arguments
     ///
-    /// * `plain` - A reference to the character to encrypt
+    /// * `plain` - The character to encrypt
     ///
     /// # Returns
     ///
@@ -78,10 +77,14 @@ impl UniAz {
     /// use uniaz::UniAz;
     ///
     /// let uni_az = UniAz::new();
-    /// let encrypted = uni_az.encrypt(&'A');
+    /// let encrypted = uni_az.encrypt('A');
     /// ```
-    pub fn encrypt(&self, plain: &char) -> String {
-        let converted = self.converter.convert(&(*plain as u32).to_string()).unwrap();
+    pub fn encrypt(&self, plain: char) -> String {
+        let numeric = (plain as u32).to_string();
+        let converted = self
+            .converter
+            .convert(&numeric)
+            .expect("converter: valid decimal string for Unicode codepoint");
         self.cipher.encrypt(&converted, 2)
     }
     
@@ -93,11 +96,12 @@ impl UniAz {
     ///
     /// # Arguments
     ///
-    /// * `cipher` - A reference to the encrypted string
+    /// * `cipher` - A reference to the encrypted string (must contain only a-z)
     ///
     /// # Returns
     ///
-    /// The original Unicode character
+    /// `Ok(char)` with the original character, or `Err(DecryptError)` if the
+    /// cipher text is invalid, corrupted, or tampered with.
     ///
     /// # Examples
     ///
@@ -105,15 +109,86 @@ impl UniAz {
     /// use uniaz::UniAz;
     ///
     /// let uni_az = UniAz::new();
-    /// let encrypted = uni_az.encrypt(&'A');
-    /// let decrypted = uni_az.decrypt(&encrypted);
+    /// let encrypted = uni_az.encrypt('A');
+    /// let decrypted = uni_az.decrypt(&encrypted).unwrap();
     /// assert_eq!(decrypted, 'A');
     /// ```
-    pub fn decrypt(&self, cipher: &str) -> char {
+    pub fn decrypt(&self, cipher: &str) -> Result<char, DecryptError> {
+        if !cipher.chars().all(|c| c.is_ascii_lowercase()) {
+            return Err(DecryptError::InvalidCipherText);
+        }
         let decrypted = self.cipher.decrypt(cipher, 2);
-        char::from_u32(u32::from_str(&self.rev_converter.convert(&decrypted).unwrap()).unwrap()).unwrap()
+        let numeric = self
+            .rev_converter
+            .convert(&decrypted)
+            .map_err(|_| DecryptError::InvalidToken)?;
+        let cp = u32::from_str(&numeric).map_err(|_| DecryptError::InvalidToken)?;
+        char::from_u32(cp).ok_or(DecryptError::InvalidCodepoint)
+    }
+
+    /// Encrypts a string by encrypting each character and joining with spaces.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use uniaz::UniAz;
+    ///
+    /// let uni_az = UniAz::new();
+    /// let encrypted = uni_az.encrypt_str("你好");
+    /// let decrypted = uni_az.decrypt_str(&encrypted).unwrap();
+    /// assert_eq!(decrypted, "你好");
+    /// ```
+    pub fn encrypt_str(&self, text: &str) -> String {
+        text.chars()
+            .map(|c| self.encrypt(c))
+            .collect::<Vec<_>>()
+            .join(" ")
+    }
+
+    /// Decrypts a string that was encrypted with [`encrypt_str`](Self::encrypt_str).
+    ///
+    /// Expects space-separated encrypted tokens. Returns an error if any token is invalid.
+    pub fn decrypt_str(&self, text: &str) -> Result<String, DecryptError> {
+        let mut result = String::new();
+        for token in text.split_whitespace() {
+            if token.is_empty() {
+                continue;
+            }
+            let c = self.decrypt(token)?;
+            result.push(c);
+        }
+        Ok(result)
     }
 }
+
+impl Default for UniAz {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+/// Error type for decryption failures.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum DecryptError {
+    /// The cipher text contains invalid characters (expects only a-z).
+    InvalidCipherText,
+    /// The encrypted token could not be decoded (corrupted or tampered).
+    InvalidToken,
+    /// The decoded value is not a valid Unicode codepoint.
+    InvalidCodepoint,
+}
+
+impl std::fmt::Display for DecryptError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            DecryptError::InvalidCipherText => write!(f, "cipher text must contain only a-z"),
+            DecryptError::InvalidToken => write!(f, "invalid or corrupted cipher token"),
+            DecryptError::InvalidCodepoint => write!(f, "decoded value is not a valid Unicode codepoint"),
+        }
+    }
+}
+
+impl std::error::Error for DecryptError {}
 
 #[cfg(test)]
 mod tests {
@@ -122,18 +197,44 @@ mod tests {
     #[test]
     fn test_char() {
         let u = UniAz::new();
-        let e = u.encrypt(&'你');
-        let p = u.decrypt(&e);
-        println!("{:?}", e);
-        println!("{:?}", p);
+        let e = u.encrypt('你');
+        let p = u.decrypt(&e).unwrap();
+        assert_eq!(p, '你');
     }
 
     #[test]
     fn test_emoji() {
         let u = UniAz::new();
-        let e = u.encrypt(&'😀');
-        let p = u.decrypt(&e);
-        println!("{:?}", e);
-        println!("{:?}", p);
+        let e = u.encrypt('😀');
+        let p = u.decrypt(&e).unwrap();
+        assert_eq!(p, '😀');
+    }
+
+    #[test]
+    fn test_decrypt_invalid() {
+        let u = UniAz::new();
+        assert!(u.decrypt("!!").is_err());
+        assert!(u.decrypt("ab12").is_err());
+    }
+
+    #[test]
+    fn test_encrypt_decrypt_str() {
+        let u = UniAz::new();
+        let encrypted = u.encrypt_str("你好世界");
+        let decrypted = u.decrypt_str(&encrypted).unwrap();
+        assert_eq!(decrypted, "你好世界");
+    }
+
+    #[test]
+    #[ignore = "takes ~minutes to run all 1.1M codepoints"]
+    fn test_all_codepoints() {
+        let u = UniAz::new();
+        for i in 0..=0x10FFFF {
+            if let Some(c) = char::from_u32(i) {
+                let e = u.encrypt(c);
+                let p = u.decrypt(&e).unwrap();
+                assert_eq!(c, p);
+            }
+        }
     }
 }

@@ -1,26 +1,21 @@
-use uniaz::*;
-use std::io;
-use std::io::Write;
+use std::io::{self, Write};
+use uniaz::UniAz;
 
 fn main() {
-    let u: UniAz = UniAz::new();
+    let u = UniAz::new();
     loop {
         print!("请输入文本: ");
         io::stdout().flush().unwrap();
-        
+
         let mut text = String::new();
         io::stdin().read_line(&mut text).unwrap();
-        
-        let mut res = String::new();
-        for c in text.trim().chars() {
-            let encrypted = u.encrypt(&c);
-            res.push_str(&encrypted);
-            res.push(' ');
+        let text = text.trim();
+
+        if text.is_empty() {
+            break;
         }
-        println!("{}", res);
-        if text.trim().is_empty() { break;}
-            
+
+        let encrypted = u.encrypt_str(text);
+        println!("{encrypted}");
     }
-    
-    
 }
