@@ -1,6 +1,6 @@
 [package]
 name = "uniaz"
-version = "0.1.2"
+version = "0.1.3"
 edition = "2021"
 authors = ["Entlst <volyyig@gmail.com>"]
 description = "Unify the Unicode chars into A-Z sequence"
